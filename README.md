@@ -91,52 +91,47 @@
 와이어프레임/DB 설계 파일은 다음 경로에서 확인할 수 있습니다.
 
 ```text
-ott-streaming-wireframes/
-└─ docs/
-   ├─ wireframes/
-   │  └─ desktop/
-   │     wf-auth-login.png                     # 로그인
-   │     wf-signup-step1-email.png             # 회원가입 1단계 – 이메일
-   │     wf-signup-step2-password.png          # 회원가입 2단계 – 비밀번호
-   │     wf-signup-step3-profile-info.png      # 회원가입 3단계 – 기본 정보
-   │     wf-home-main.png                      # 메인 홈
-   │     wf-home-profile-dropdown.png          # 홈 – 프로필 메뉴
-   │     wf-movie-list.png                     # 영화 탭
-   │     wf-series-list.png                    # 시리즈 탭
-   │     wf-movie-detail.png                   # 작품 상세 – 기본
-   │     wf-movie-detail-episodes.png          # 작품 상세 – 회차
-   │     wf-movie-detail-reviews.png           # 작품 상세 – 리뷰
-   │     wf-my-reviews-list.png                # 내 리뷰 목록
-   │     wf-my-reviews-empty.png               # 내 리뷰 – 비어 있을 때
-   │     wf-watch-history-list.png             # 시청 기록
-   │     wf-watch-history-empty.png            # 시청 기록 – 비어 있을 때
-   │     wf-wishlist-list.png                  # 찜 목록
-   │     wf-wishlist-empty.png                 # 찜 목록 – 비어 있을 때
-   │     wf-membership-plan-select.png         # 멤버십 선택
-   │     wf-payment-method-card.png            # 결제 수단 선택(카드)
-   │     wf-payment-complete.png               # 결제 완료
-   │     wf-account-info-edit.png              # 계정 정보 수정
-   │     wf-account-membership-manage.png      # 멤버십 관리
-   │     wf-account-membership-cancel.png      # 멤버십 해지
-   │     wf-account-parental-profile.png       # 자녀 보호 – 프로필 선택
-   │     wf-account-parental-rating-limit.png  # 자녀 보호 – 관람 등급 제한
-   │     wf-account-security-devices.png       # 보안 – 디바이스 관리
-   │     wf-account-verify-before-edit.png     # 정보 변경 전 본인 확인
-   │     wf-profile-select.png                 # 프로필 선택
-   │     wf-profile-manage.png                 # 프로필 관리
-   │     wf-profile-edit.png                   # 프로필 수정
-   │     wf-profile-settings.png               # 프로필별 화면 설정
-   │     wf-player-default.png                 # 플레이어 기본 화면
-   │     wf-player-postplay-review.png         # 재생 종료 후 리뷰 팝업
-   │     wf-review-create.png                  # 리뷰 작성 모달
-   │     ...
-   └─ db/
-      ott-db-v0.png                            # OTT 전체 ERD 다이어그램 (v0)
-      ott-db-v0.sql                            # MySQL DDL 스키마 (v0)
-````
 
-> 와이어프레임 파일명 규칙: `wf-<영역>-<상태>.png`
-> DB 설계 파일명 규칙: `ott-db-v<버전>.{png,sql}` 형식으로 버전별 히스토리를 관리합니다.
+docs/
+├─ wireframes/
+│  └─ desktop/
+│     wf-auth-login.png                     # 로그인
+│     wf-signup-step1-email.png             # 회원가입 1단계 – 이메일
+│     wf-signup-step2-password.png          # 회원가입 2단계 – 비밀번호
+│     wf-signup-step3-profile.png           # 회원가입 3단계 – 기본 정보
+│     wf-home-main.png                      # 메인 홈
+│     wf-home-profile-dropdown.png          # 홈 – 프로필 메뉴
+│     wf-movie-list.png                     # 영화 탭
+│     wf-series-list.png                    # 시리즈 탭
+│     wf-title-detail-related.png           # 작품 상세 – 관련 콘텐츠
+│     wf-title-detail-reviews.png           # 작품 상세 – 리뷰
+│     wf-my-reviews-list.png                # 내 리뷰 목록
+│     wf-watch-history-list.png             # 시청 기록
+│     wf-watchlist-list.png                 # 찜 목록
+│     wf-membership-plan-select.png         # 멤버십 선택
+│     wf-payment-method-card.png            # 결제 수단 선택(카드)
+│     wf-payment-complete.png               # 결제 완료
+│     wf-account-info-edit.png              # 계정 정보 수정
+│     wf-account-membership-manage.png      # 멤버십 관리
+│     wf-account-security-devices.png       # 보안 – 디바이스 관리
+│     wf-account-verify-before-edit.png     # 정보 변경 전 본인 확인
+│     wf-profile-select.png                 # 프로필 선택
+│     wf-profile-mypage-settings.png        # 프로필 마이페이지/설정
+│     wf-profile-playback-display-settings.png  # 프로필별 화면/재생 설정
+│     wf-player-default.png                 # 플레이어 기본 화면
+│     wf-player-postplay-review.png         # 재생 종료 후 리뷰 팝업
+│     wf-review-write-modal.png             # 리뷰 작성 모달
+│     ...
+└─ db/
+   ott-db-v0.png                            # OTT 전체 ERD 다이어그램 (v0)
+   ott-db-v0.sql                            # MySQL DDL 스키마 (v0)
+   README.md                                # DB/ERD & MySQL 설계 정리본
+
+
+> 파일명 규칙: `wf-<영역>-<상태>.png` 형태로,
+> Git 히스토리만 봐도 어떤 화면인지 유추할 수 있도록 네이밍했습니다.
+- DB/ERD 설계 상세 설명: [`docs/db/README.md`](./docs/db/README.md)
+>>>>>>> 104b8d5 (docs: update README paths to new docs layout)
 
 ---
 
@@ -168,28 +163,25 @@ ott-streaming-wireframes/
 > 코드 베이스는 점진적으로 추가될 예정이며, 현재는 설계/와이어프레임/DB 중심 구조입니다.
 
 ```text
-ott-service/
-├─ LICENSE
-├─ README.md
-├─ .gitignore
-└─ ott-streaming-wireframes/
-   └─ docs/
-      ├─ wireframes/
-      │  └─ desktop/
-      │     *.png        # OTT 데스크톱 웹 와이어프레임
-      └─ db/
-         ott-db-v0.png   # OTT DB ERD (v0)
-         ott-db-v0.sql   # OTT DB 스키마 DDL (v0)
-```
+
+└─ docs/
+   ├─ wireframes/
+   │  └─ desktop/
+   │     *.png        # OTT 데스크톱 웹 와이어프레임
+   └─ db/
+      ├─ ott-db-v0.png   # OTT DB ERD (v0)
+      ├─ ott-db-v0.sql   # OTT DB 스키마 DDL (v0)
+      └─ README.md       # DB/ERD & MySQL 설계 정리본
+>>>>>>> 104b8d5 (docs: update README paths to new docs layout)
 
 향후 계획:
 
 ```text
 ott-service/
-├─ backend/     # Spring Boot 프로젝트 (예정)
-├─ frontend/    # React 프로젝트 (예정)
-└─ docs/        # ERD, API 명세 등 설계 문서 (예정)
-```
+├─ backend/
+├─ frontend/
+└─ docs/
+
 
 ---
 
