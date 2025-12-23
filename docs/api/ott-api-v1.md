@@ -1,9 +1,18 @@
 # OTT API v1 명세서 (초안)
 
+## Changelog
+
+### 2025-12-23
+- API v1 초안 정리 및 규칙 확정
+- 프로필 컨텍스트 전달 방식(`X-Profile-Id`) 헤더 통일 정책 확정(엔드포인트 반영 예정)
+- 시간 표기 규칙을 ISO 8601 UTC(Z) 형식으로 고정
+- Refresh Token 정책 확정 (로테이션 + 서버 저장 + 로그아웃 시 폐기)
+- 공통 HTTP Status 코드 매핑 기준 명확화
+
 - Base URL: `/api/v1`
 - Request/Response: JSON (snake_case)
 - Auth: `Authorization: Bearer {access_token}` 헤더 사용
-- 모든 시간은 기본적으로 ISO 8601 문자열(예: `"2025-12-10T12:34:56.789Z"`) 또는 KST 기준 DATETIME과 매핑
+- 모든 시간은 ISO 8601 UTC(Z) 문자열로 통일(예: `"2025-12-10T12:34:56.789Z"`)
 
 ---
 
@@ -19,7 +28,7 @@
   "data": { },
   "error": null
 }
-````
+```
 
 에러 시:
 
