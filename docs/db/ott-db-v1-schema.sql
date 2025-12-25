@@ -4,13 +4,14 @@
    - Engine: InnoDB
    - Charset: utf8mb4
    ========================================================= */
-
+   
+-- (DB 생성/USE는 실행 커맨드에서 통제)
 -- ===== Database =====
-CREATE DATABASE IF NOT EXISTS ott_service
-  DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_0900_ai_ci;
+-- CREATE DATABASE IF NOT EXISTS ott_service
+--   DEFAULT CHARACTER SET utf8mb4
+--   DEFAULT COLLATE utf8mb4_0900_ai_ci;
 
-USE ott_service;
+-- USE ott_service;
 
 -- ===== 회원/인증 =====
 CREATE TABLE IF NOT EXISTS users (
@@ -343,9 +344,9 @@ CREATE TABLE IF NOT EXISTS watch_histories (
   CONSTRAINT fk_wh_contents
     FOREIGN KEY (content_id) REFERENCES contents(content_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_wh_episodes
-    FOREIGN KEY (episode_id) REFERENCES episodes(episode_id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
+  -- CONSTRAINT fk_wh_episodes
+  --   FOREIGN KEY (episode_id) REFERENCES episodes(episode_id)
+  --   ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT chk_wh_progress_duration
     CHECK (progress_sec >= 0 AND duration_sec > 0 AND progress_sec <= duration_sec)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -443,12 +444,21 @@ CREATE TABLE IF NOT EXISTS watch_party_members (
   profile_id  BIGINT UNSIGNED NOT NULL,
   joined_at   DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (room_id, profile_id),
-  CONSTRAINT fk_wpm_rooms
-    FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_wpm_profiles
-    FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
-    ON DELETE CASCADE ON UPDATE CASCADE
+  -- CONSTRAINT fk_wpm_rooms
+  --   FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
+  --   ON DELETE CASCADE ON UPDATE CASCADE,
+  -- CONSTRAINT fk_wpm_messages_rooms
+  -- FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
+  -- ON DELETE CASCADE ON UPDATE CASCADE,
+  -- CONSTRAINT fk_wpm_profiles
+  --   FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+  --   ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT fk_watch_party_members_room
+  FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
+  ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_watch_party_members_profile
+  FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+  ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS watch_party_messages (
@@ -459,10 +469,25 @@ CREATE TABLE IF NOT EXISTS watch_party_messages (
   sent_at     DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (message_id),
   KEY idx_wpm_room_sent (room_id, sent_at),
-  CONSTRAINT fk_wpm_rooms
-    FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_wpm_profiles
-    FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
-    ON DELETE CASCADE ON UPDATE CASCADE
+  -- CONSTRAINT fk_wpm_rooms
+  --   FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
+  --   ON DELETE CASCADE ON UPDATE CASCADE,
+  -- CONSTRAINT fk_wpm_profiles
+  --   FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+  --   ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT fk_watch_party_messages_room
+  FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
+  ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_watch_party_messages_profile
+  FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+  ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- -- ===== FK 보강 (DDL 분리 생성) =====
+-- ALTER TABLE watch_histories
+--   ADD CONSTRAINT fk_wh_episodes
+--     FOREIGN KEY (episode_id) REFERENCES episodes(episode_id)
+--     ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- fk_wh_episodes 제거 (v1)
+-- episode_id는 애플리케이션 로직에서만 유효성 보장
