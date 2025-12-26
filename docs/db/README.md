@@ -9,6 +9,7 @@
 * 실행 가능한 DDL(v0): `docs/db/ott-db-v0-schema.sql`
 * 실행 가능한 DDL(v1): `docs/db/ott-db-v1-schema.sql`
 * 데모 시드 데이터(v0): `docs/db/ott-db-v0-seed.sql`
+* 데모 시드 데이터(v1): `docs/db/ott-db-v1-seed.sql`
 * (선택) ERD Cloud 원본 DDL: `docs/db/ott-db-v0-erdcloud.sql`
 * API 문서(v1): `docs/api/ott-api-v1.md`
 
@@ -19,9 +20,8 @@
 * DBMS: **MySQL**
 * Storage Engine: **InnoDB**
 * Charset/Collation: **utf8mb4 / utf8mb4_0900_ai_ci**
-* 이 문서는 DDL을 그대로 나열하는 문서가 아니라,
-  **“왜 이런 구조/타입/제약을 선택했는지”를 설명하기 위한 설계 노트**이다.
-* v1은 v0의 1차 설계를 기반으로, **구현(Spring Boot + JPA) 전 단계에서 제약을 강화(hardening)** 한 버전이다.
+* 이 문서는 DDL을 그대로 나열하는 문서가 아니라, **“왜 이런 구조/타입/제약을 선택했는지”를 설명하기 위한 설계 노트**이다.
+* v1은 v0의 1차 설계를 기반으로, **구현(Spring Boot + JPA) 전 단계에서 제약을 강화(정합성·무결성 보강)** 한 버전이다.
 
 ---
 
@@ -46,22 +46,18 @@
 ### 1-2. watch_histories의 UNIQUE + NULL 문제를 DB 레벨에서 해결
 
 v0에서는 `watch_histories`의 유니크 키가 `(profile_id, content_id, episode_id)`였고,
-MySQL의 UNIQUE 인덱스에서 `NULL`은 서로 다른 값으로 취급될 수 있어
-**영화(episode_id = NULL)** 케이스에서 중복 삽입이 가능해질 수 있었다.
+MySQL의 UNIQUE 인덱스에서 `NULL`은 서로 다른 값으로 취급될 수 있어 **영화(episode_id = NULL)** 케이스에서 중복 삽입이 가능해질 수 있었다.
 
 v1에서는 이를 DB 레벨에서 제어하기 위해 아래 전략을 적용한다.
 
-* `episode_key` 생성 컬럼을 추가하고
-  `episode_key = IFNULL(episode_id, 0)` 으로 저장한다.
-* UNIQUE는 `(profile_id, content_id, episode_key)`로 걸어
-  영화(episode_key=0)는 **프로필+작품당 1개만 유지**되도록 강제한다.
+* `episode_key` 생성 컬럼을 추가하고 `episode_key = IFNULL(episode_id, 0)` 으로 저장한다.
+* UNIQUE는 `(profile_id, content_id, episode_key)`로 걸어 영화(episode_key=0)는 **프로필+작품당 1개만 유지**되도록 강제한다.
 
 ---
 
 ### 1-3. 데이터 정합성을 위한 CHECK 제약 추가(하드닝)
 
-v1에서는 “서비스 로직으로 충분히 막을 수 있는 값”이라도
-DB 레벨에서 기본적인 정합성을 보장하기 위해 CHECK 제약을 추가한다.
+v1에서는 “서비스 로직으로 충분히 막을 수 있는 값”이라도 DB 레벨에서 기본적인 정합성을 보장하기 위해 CHECK 제약을 추가한다.
 
 * `promo_codes.discount_value`
 
@@ -170,8 +166,7 @@ DB 레벨에서 기본적인 정합성을 보장하기 위해 CHECK 제약을 �
 
 * 프로필 + 작품(+회차) 기준으로 “최신 상태”를 유지하는 용도다.
 * 홈의 “이어보기”, 진행률 표시, 시청목록 노출/숨김 처리에 사용한다.
-* v1에서는 영화 중복 문제를 해결하기 위해 `episode_key`를 도입하고
-  UNIQUE를 `(profile_id, content_id, episode_key)`로 강제한다.
+* v1에서는 영화 중복 문제를 해결하기 위해 `episode_key`를 도입하고 UNIQUE를 `(profile_id, content_id, episode_key)`로 강제한다.
 * 인덱스
 
   * `INDEX(profile_id, is_hidden, last_watched_at)`로 최근 본 순/노출 목록 조회 최적화
@@ -193,8 +188,7 @@ DB 레벨에서 기본적인 정합성을 보장하기 위해 CHECK 제약을 �
 
   * 유저는 소프트 삭제가 기본이라 물리 삭제를 거의 하지 않는다는 가정이다.
 
-* profiles → (profile_settings, subtitle_style, wishlists, watch_histories, watch_sessions, reviews, content_blocks, watch_party_*):
-  **ON DELETE CASCADE**
+* profiles → (profile_settings, subtitle_style, wishlists, watch_histories, watch_sessions, reviews, content_blocks, watch_party_*): **ON DELETE CASCADE**
 
   * 프로필 삭제 시 해당 프로필에 종속된 데이터가 함께 정리되는 것이 자연스럽다는 가정이다.
 
@@ -202,28 +196,127 @@ DB 레벨에서 기본적인 정합성을 보장하기 위해 CHECK 제약을 �
 
 ## 7. 타임존 가정
 
-* 모든 `DATETIME(3)` 컬럼은 DB에는 **UTC 기준 저장**을 가정한다.
-* 클라이언트 표시는 사용자 로컬 타임존(KST 등)으로 변환한다.
+* 운영 기준으로는 DB 저장은 **UTC**를 권장한다.
+* 로컬 개발/데모 seed 실행 환경에 따라 `SET time_zone`이 다를 수 있으며, 클라이언트 표시는 사용자 로컬 타임존(KST 등)으로 변환한다.
 
 ---
 
 ## 8. 실행 순서(권장)
 
+### 8-1. 스키마 적용(v1)
+
 1. `docs/db/ott-db-v1-schema.sql` 실행(스키마 생성)
-2. 데모 데이터가 필요하면 `docs/db/ott-db-v0-seed.sql`을 실행해 기본 관계를 빠르게 검증할 수 있다.
 
-   * 단, v1에 추가된 `refresh_tokens`는 v0 seed에 포함되어 있지 않으므로 필요한 경우 별도로 seed를 추가한다.
-3. 간단 검증
+```bash
+# (선택) DB 생성
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ott_service DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_0900_ai_ci;"
 
-   * 프로필/작품/찜/시청기록/리뷰/구독/결제/워치파티 관계가 정상적으로 조회되는지 확인한다.
+# 스키마 적용 (v1)
+mysql -u root -p ott_service < docs/db/ott-db-v1-schema.sql
+```
+
+> DB 생성/USE는 SQL 파일에 넣지 않고 실행 커맨드에서 통제한다.
+> `-p` 옵션은 비밀번호를 프롬프트로 입력받는 방식이며, `-pPASSWORD` 형태로 직접 붙여 쓰는 것은 피한다.
 
 ---
 
-## 9. 다음 단계(구현 메모)
+### 8-2. 데모/검증용 Seed 적용(카탈로그 전용, public-safe)
 
-- DB(v1)와 API(v1) 계약을 기준으로,
-  이후 단계에서는 **Spring Boot 기반 백엔드 구현**을 진행한다.
-- 본 문서는 DB/ERD 설계 범위까지만을 다루며,
-  구현 상세는 백엔드 코드 및 API 문서에서 다룬다.
+본 프로젝트의 seed는 GitHub 공개를 전제로 **catalog-only** 데이터를 넣는다.
 
-  
+* 포함: plans/terms/genres/contents/seasons/episodes/people 및 매핑
+* 미포함: users/profiles/subscriptions/payments/watch/review 등 사용자 데이터
+
+> 보통은 v1 스키마 기준으로 `ott-db-v1-seed.sql`을 사용하며, `ott-db-v0-seed.sql`은 v0 스키마 재현/비교용으로 유지한다.
+
+#### (A) v0 seed: 최소 카탈로그 seed (고정 PK 기반)
+
+* 파일: `docs/db/ott-db-v0-seed.sql`
+* 특징:
+
+  * `plan_id`, `genre_id`, `content_id` 등을 **고정값으로 명시**해 관계를 단순하게 검증하기 좋다.
+  * 실행 전제: v0 스키마(`ott-db-v0-schema.sql`) 기준
+
+```bash
+mysql -u root -p ott_service < docs/db/ott-db-v0-seed.sql
+```
+
+> v0 seed는 파일 내부에 `USE ott_service;`가 포함되어 있어 DB명이 다르면 수정이 필요하다.
+
+#### (B) v1 seed: v1 스키마용 카탈로그 seed (재실행 안전)
+
+* 파일: `docs/db/ott-db-v1-seed.sql`
+* 특징:
+
+  * 재실행 안전성: `ON DUPLICATE KEY UPDATE`, `INSERT IGNORE`, `NOT EXISTS` 기반
+  * v1에서 추가된 제약(CHECK 등) 및 테이블 구조 기준으로 카탈로그/예시 데이터를 빠르게 구성
+
+```bash
+mysql -u root -p ott_service < docs/db/ott-db-v1-seed.sql
+```
+
+---
+
+### 8-3. 간단 검증(예시)
+
+* 테이블 생성 확인: `SHOW TABLES;`
+* DDL 확인: `SHOW CREATE TABLE watch_histories;`
+* 카탈로그 관계 확인: 콘텐츠/장르/인물/시즌/에피소드 매핑이 정상 조회되는지 확인
+
+---
+
+## 9. Troubleshooting / 시행착오 기록
+
+### 9-1. ERROR 1064 (SQL syntax error)
+
+* 원인: MySQL 클라이언트(`mysql>` 프롬프트) 내부에서 `< file.sql` 리다이렉션 명령을 실행하려고 해서 발생
+* 해결:
+
+  * `mysql -u root -p dbname < file.sql` 은 **OS 터미널(CMD/PowerShell/Git Bash)** 에서 실행해야 한다.
+
+---
+
+### 9-2. ERROR 1826 (Duplicate foreign key constraint name)
+
+* 원인:
+
+  * MySQL은 **스키마(DB) 전체에서 FK constraint name이 유일**해야 한다.
+  * 여러 테이블에서 동일한 FK 이름을 재사용하면 충돌한다. (예: `fk_wpm_profiles`, `fk_wpm_rooms` 등)
+* 해결:
+
+  * FK 이름에 **테이블명을 포함**하도록 규칙화했다.
+  * 적용 규칙: `fk_{table}_{reference}`
+
+---
+
+### 9-3. ERROR 1215 (Cannot add foreign key constraint)
+
+* 원인 후보:
+
+  1. 참조 대상 컬럼과 타입/UNSIGNED 여부 불일치
+  2. 참조 대상 컬럼에 PK 또는 UNIQUE 인덱스가 없음
+  3. 참조 테이블 생성 이전에 FK를 추가함
+  4. NULL 허용 여부 / ON DELETE 규칙 불일치
+* 실제 처리(v1):
+
+  * `watch_histories.episode_id`는 영화/시리즈 통합 모델 때문에 NULL 허용이며,
+  * `episode_key`(GENERATED COLUMN) + FK 분리 추가(ALTER) 조합에서 FK 생성 시점 충돌 가능성이 커,
+  * v1에서는 `watch_histories → episodes` FK를 제거하고 애플리케이션 로직에서 무결성을 보장한다.
+* 근거:
+
+  * 영화(MOVIE)는 episode가 없고, 시리즈(SERIES)만 episode가 존재하는 “혼합 모델”을 단순하게 유지하기 위함이다.
+  * “watch_histories는 ‘이어보기 요약’ 테이블이라, 영화/시리즈 통합 모델에서 episode FK 강제보다 중복 방지(episode_key)와 조회 성능을 우선했다.”
+
+---
+
+### 9-4. 검증 결과
+
+* MySQL 8.0.44 환경에서 스키마가 정상 실행됨을 확인했다.
+
+---
+
+## 10. 다음 단계(구현 메모)
+
+* DB(v1)와 API(v1) 계약을 기준으로, 이후 단계에서는 **Spring Boot 기반 백엔드 구현**을 진행한다.
+* 본 문서는 DB/ERD 설계 범위까지만을 다루며, 구현 상세는 백엔드 코드 및 API 문서에서 다룬다.
+
