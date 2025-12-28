@@ -170,6 +170,7 @@ v1에서는 “서비스 로직으로 충분히 막을 수 있는 값”이라�
 * 인덱스
 
   * `INDEX(profile_id, is_hidden, last_watched_at)`로 최근 본 순/노출 목록 조회 최적화
+  * `INDEX(episode_id)`로 (선택) 에피소드 기준 조회/정리 작업을 보조한다.
 
 ### 5-3. watch_sessions(시청 세션 로그)
 
@@ -192,6 +193,11 @@ v1에서는 “서비스 로직으로 충분히 막을 수 있는 값”이라�
 
   * 프로필 삭제 시 해당 프로필에 종속된 데이터가 함께 정리되는 것이 자연스럽다는 가정이다.
 
+* watch_histories → episodes: **v1에서는 FK 미적용**
+
+  * MySQL 8.0.44에서 `episode_key`(GENERATED STORED) + UNIQUE + `episode_id` FK 조합이 테이블 생성 단계에서 1215로 실패하는 케이스가 재현되어, v1에서는 FK를 제거하고 애플리케이션 로직(저장 전 에피소드 존재 검증)으로 무결성을 보장한다.
+  * watch_sessions / watch_party_rooms 등 다른 테이블의 `episode_id` FK는 정상 적용 가능하다.
+
 ---
 
 ## 7. 타임존 가정
@@ -213,7 +219,7 @@ mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ott_service DEFAULT CHARACTER
 
 # 스키마 적용 (v1)
 mysql -u root -p ott_service < docs/db/ott-db-v1-schema.sql
-```
+````
 
 > DB 생성/USE는 SQL 파일에 넣지 않고 실행 커맨드에서 통제한다.
 > `-p` 옵션은 비밀번호를 프롬프트로 입력받는 방식이며, `-pPASSWORD` 형태로 직접 붙여 쓰는 것은 피한다.
@@ -297,21 +303,25 @@ mysql -u root -p ott_service < docs/db/ott-db-v1-seed.sql
   2. 참조 대상 컬럼에 PK 또는 UNIQUE 인덱스가 없음
   3. 참조 테이블 생성 이전에 FK를 추가함
   4. NULL 허용 여부 / ON DELETE 규칙 불일치
-* 실제 처리(v1):
+* 재현/결론(v1):
 
-  * `watch_histories.episode_id`는 영화/시리즈 통합 모델 때문에 NULL 허용이며,
-  * `episode_key`(GENERATED COLUMN) + FK 분리 추가(ALTER) 조합에서 FK 생성 시점 충돌 가능성이 커,
-  * v1에서는 `watch_histories → episodes` FK를 제거하고 애플리케이션 로직에서 무결성을 보장한다.
-* 근거:
+  * MySQL 8.0.44에서 아래 조합을 함께 쓰면 `watch_histories` 생성 시점에 1215가 재현되었다.
 
-  * 영화(MOVIE)는 episode가 없고, 시리즈(SERIES)만 episode가 존재하는 “혼합 모델”을 단순하게 유지하기 위함이다.
-  * “watch_histories는 ‘이어보기 요약’ 테이블이라, 영화/시리즈 통합 모델에서 episode FK 강제보다 중복 방지(episode_key)와 조회 성능을 우선했다.”
+    * `episode_id`는 NULL 허용
+    * `episode_key`는 `IFNULL(episode_id, 0)`인 **GENERATED STORED 컬럼**
+    * UNIQUE가 `(profile_id, content_id, episode_key)`
+    * 동시에 `episode_id`에 `FOREIGN KEY`를 선언
+
+  * 따라서 v1에서는 `watch_histories → episodes` FK를 제거하고, 저장/수정 로직에서 `episode_id` 존재 여부를 검증해 무결성을 보장한다.
+
+  * 동일한 `episode_id` FK라도, `watch_sessions`나 `watch_party_rooms`처럼 “GENERATED+UNIQUE로 episode_id를 우회”하지 않는 구조에서는 정상 적용 가능하다.
 
 ---
 
 ### 9-4. 검증 결과
 
-* MySQL 8.0.44 환경에서 스키마가 정상 실행됨을 확인했다.
+* MySQL 8.0.44 환경에서 v1 스키마가 정상 실행됨을 확인했다.
+* (참고) `watch_histories` FK를 활성화하려고 하면 1215가 발생하며, 해당 라인에서 생성이 중단되어 이후 테이블이 누락될 수 있다.
 
 ---
 
@@ -319,4 +329,3 @@ mysql -u root -p ott_service < docs/db/ott-db-v1-seed.sql
 
 * DB(v1)와 API(v1) 계약을 기준으로, 이후 단계에서는 **Spring Boot 기반 백엔드 구현**을 진행한다.
 * 본 문서는 DB/ERD 설계 범위까지만을 다루며, 구현 상세는 백엔드 코드 및 API 문서에서 다룬다.
-
