@@ -4,13 +4,12 @@
    - Engine: InnoDB
    - Charset: utf8mb4
    ========================================================= */
-   
+
 -- (DB 생성/USE는 실행 커맨드에서 통제)
 -- ===== Database =====
 -- CREATE DATABASE IF NOT EXISTS ott_service
 --   DEFAULT CHARACTER SET utf8mb4
 --   DEFAULT COLLATE utf8mb4_0900_ai_ci;
-
 -- USE ott_service;
 
 -- ===== 회원/인증 =====
@@ -327,26 +326,38 @@ CREATE TABLE IF NOT EXISTS watch_histories (
   profile_id       BIGINT UNSIGNED NOT NULL,
   content_id       BIGINT UNSIGNED NOT NULL,
   episode_id       BIGINT UNSIGNED NULL,
+
+  -- 영화(MOVIE)는 episode가 없어서 NULL 가능.
+  -- UNIQUE에서 NULL은 서로 다른 값으로 취급될 수 있어,
+  -- episode_id NULL을 0으로 정규화한 episode_key로 "영화 이어보기 1건" 중복을 방지한다.
   episode_key      BIGINT UNSIGNED
                    GENERATED ALWAYS AS (IFNULL(episode_id, 0)) STORED,
+
   progress_sec     INT UNSIGNED NOT NULL DEFAULT 0,
   duration_sec     INT UNSIGNED NOT NULL,
   is_finished      BOOLEAN NOT NULL DEFAULT 0,
   is_hidden        BOOLEAN NOT NULL DEFAULT 0,
   last_watched_at  DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   created_at       DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
   PRIMARY KEY (history_id),
   UNIQUE KEY uq_wh_profile_content_episodekey (profile_id, content_id, episode_key),
   KEY idx_wh_profile_hidden_last (profile_id, is_hidden, last_watched_at),
+  KEY idx_wh_episode_id (episode_id),
+
   CONSTRAINT fk_wh_profiles
     FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_wh_contents
     FOREIGN KEY (content_id) REFERENCES contents(content_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
-  -- CONSTRAINT fk_wh_episodes
-  --   FOREIGN KEY (episode_id) REFERENCES episodes(episode_id)
-  --   ON DELETE SET NULL ON UPDATE CASCADE,
+
+  -- NOTE(1215): MySQL 8.0.44에서
+  -- GENERATED STORED 컬럼(episode_key) + UNIQUE + episode_id FK 조합이
+  -- 테이블 생성 시 FK 생성 실패(1215)로 재현됨.
+  -- v1에서는 watch_histories.episode_id FK를 제거하고,
+  -- 애플리케이션 로직(저장 전 episode 존재 검증)으로 무결성을 보장한다.
+
   CONSTRAINT chk_wh_progress_duration
     CHECK (progress_sec >= 0 AND duration_sec > 0 AND progress_sec <= duration_sec)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -444,21 +455,14 @@ CREATE TABLE IF NOT EXISTS watch_party_members (
   profile_id  BIGINT UNSIGNED NOT NULL,
   joined_at   DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (room_id, profile_id),
-  -- CONSTRAINT fk_wpm_rooms
-  --   FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
-  --   ON DELETE CASCADE ON UPDATE CASCADE,
-  -- CONSTRAINT fk_wpm_messages_rooms
-  -- FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
-  -- ON DELETE CASCADE ON UPDATE CASCADE,
-  -- CONSTRAINT fk_wpm_profiles
-  --   FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
-  --   ON DELETE CASCADE ON UPDATE CASCADE
+
+  -- (1826 이슈 기록) FK constraint name 중복을 피하기 위해 테이블명 포함 규칙으로 명명
   CONSTRAINT fk_watch_party_members_room
-  FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
-  ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_watch_party_members_profile
-  FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
-  ON DELETE CASCADE ON UPDATE CASCADE
+    FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS watch_party_messages (
@@ -469,18 +473,14 @@ CREATE TABLE IF NOT EXISTS watch_party_messages (
   sent_at     DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (message_id),
   KEY idx_wpm_room_sent (room_id, sent_at),
-  -- CONSTRAINT fk_wpm_rooms
-  --   FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
-  --   ON DELETE CASCADE ON UPDATE CASCADE,
-  -- CONSTRAINT fk_wpm_profiles
-  --   FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
-  --   ON DELETE CASCADE ON UPDATE CASCADE
+
+  -- (1826 이슈 기록) FK constraint name 중복을 피하기 위해 테이블명 포함 규칙으로 명명
   CONSTRAINT fk_watch_party_messages_room
-  FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
-  ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (room_id) REFERENCES watch_party_rooms(room_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_watch_party_messages_profile
-  FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
-  ON DELETE CASCADE ON UPDATE CASCADE
+    FOREIGN KEY (profile_id) REFERENCES profiles(profile_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- -- ===== FK 보강 (DDL 분리 생성) =====
