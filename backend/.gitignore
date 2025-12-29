@@ -1,0 +1,68 @@
+# ===== Gradle / Build =====
+HELP.md
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ===== Spring / Logs / Runtime =====
+logs/
+*.log
+*.pid
+*.hprof
+
+# ===== Secrets / Local environment (DO NOT COMMIT) =====
+# Spring Boot local config
+**/src/main/resources/application.properties
+**/src/main/resources/application-*.properties
+**/src/main/resources/application.yml
+**/src/main/resources/application-*.yml
+
+# ===== Env files =====
+.env
+.env.*
+!.env.example
+
+# ===== Keys / certs (if ever used) =====
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# ===== STS =====
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# ===== IntelliJ IDEA =====
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# ===== NetBeans =====
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ===== VS Code =====
+.vscode/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
