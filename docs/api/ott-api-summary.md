@@ -12,17 +12,36 @@
 * **Auth**
 
   * `Authorization: Bearer {access_token}`
+  * 예외(토큰 불필요): `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`
 * **Profile Context**
 
-  * 프로필 기준 동작이 필요한 API는
-    `X-Profile-Id: {profile_id}` 헤더 사용
+  * 프로필 기준 동작이 필요한 API는 `X-Profile-Id: {profile_id}` 헤더 사용
 * **Request / Response**
 
   * JSON, `snake_case`
-* **Time**
+* **Time / Date**
 
-  * ISO 8601 UTC(Z) 문자열
+  * **DATETIME/TIMESTAMP**: ISO 8601 UTC(Z) 문자열
     예: `2025-12-10T12:34:56.789Z`
+  * **DATE**: `"YYYY-MM-DD"` 문자열
+    예: `2026-01-01`
+
+### v1 고정 정책(DB 매핑 핵심)
+
+* **Watch Histories 매핑**
+
+  * API `last_position_sec` ↔ DB `watch_histories.progress_sec`
+  * API `total_duration_sec` ↔ DB `watch_histories.duration_sec`
+* **Contents 이미지**
+
+  * v1에서는 `thumbnail_url`을 분리하지 않고 **`thumbnail_url = poster_url`** 로 동일 값 사용 가능
+* **Contents synopsis**
+
+  * v1 상세 응답은 DB 구조와 통일: **`synopsis_short`, `synopsis_long`**
+* **Rating(별점)**
+
+  * v1에서 `my_state.my_rating`은 **리뷰의 `rating`과 동일**(리뷰 없으면 null)
+    (리뷰 없는 별점 단독 저장은 v2)
 
 ### 공통 응답 Envelope
 
@@ -57,20 +76,21 @@
 | DELETE | `/profiles/{profile_id}` | 프로필 삭제      |
 
 * 계정당 **최대 5개**
-* 최소 1개 프로필은 유지
+* 최소 1개 프로필은 유지(정책 적용 시)
+* `max_age_rating`은 `profile_settings.max_age_rating` 기반 (`ALL|7|12|15|19`)
 
 ---
 
 ## 4. 콘텐츠 (Contents)
 
-| Method | Endpoint                          | Description |
-| ------ | --------------------------------- | ----------- |
-| GET    | `/contents`                       | 콘텐츠 목록      |
-| GET    | `/contents/{content_id}`          | 콘텐츠 상세      |
-| GET    | `/contents/{content_id}/episodes` | 회차 목록(시리즈)  |
+| Method | Endpoint                          | Description       |
+| ------ | --------------------------------- | ----------------- |
+| GET    | `/contents`                       | 콘텐츠 목록            |
+| GET    | `/contents/{content_id}`          | 콘텐츠 상세(프로필 상태 포함) |
+| GET    | `/contents/{content_id}/episodes` | 회차 목록(시리즈)        |
 
 * 영화/시리즈 통합 모델
-* 연령 제한은 **프로필 기준 필터링**
+* 연령 제한은 **프로필 기준 필터링**(서버 정책)
 
 ---
 
@@ -78,59 +98,59 @@
 
 ### Watch Histories
 
-| Method | Endpoint           |
-| ------ | ------------------ |
-| GET    | `/watch-histories` |
-| PUT    | `/watch-histories` |
+| Method | Endpoint           | Description   |
+| ------ | ------------------ | ------------- |
+| GET    | `/watch-histories` | 시청 기록/이어보기 목록 |
+| PUT    | `/watch-histories` | 시청 위치 업데이트    |
 
 * `X-Profile-Id` 필수
 * 영화: `episode_id = null`
 * 시리즈: 실제 `episode_id`
 
-### Watch Sessions
+### Watch Sessions (선택)
 
-| Method | Endpoint          |
-| ------ | ----------------- |
-| GET    | `/watch-sessions` |
+| Method | Endpoint          | Description     |
+| ------ | ----------------- | --------------- |
+| GET    | `/watch-sessions` | 시청 세션 로그 조회(선택) |
 
 ---
 
 ## 6. 찜 (Wishlist)
 
-| Method | Endpoint                 |
-| ------ | ------------------------ |
-| GET    | `/wishlist`              |
-| POST   | `/wishlist`              |
-| DELETE | `/wishlist/{content_id}` |
+| Method | Endpoint                 | Description |
+| ------ | ------------------------ | ----------- |
+| GET    | `/wishlist`              | 찜 목록        |
+| POST   | `/wishlist`              | 찜 추가        |
+| DELETE | `/wishlist/{content_id}` | 찜 제거        |
 
-* 프로필 기준
-* 중복 찜 불가
+* 프로필 기준 (`X-Profile-Id`)
+* 중복 찜 불가(프로필+콘텐츠 UNIQUE)
 
 ---
 
 ## 7. 리뷰 (Reviews)
 
-| Method | Endpoint                         |
-| ------ | -------------------------------- |
-| GET    | `/contents/{content_id}/reviews` |
-| POST   | `/contents/{content_id}/reviews` |
-| PATCH  | `/reviews/{review_id}`           |
-| DELETE | `/reviews/{review_id}`           |
+| Method | Endpoint                         | Description |
+| ------ | -------------------------------- | ----------- |
+| GET    | `/contents/{content_id}/reviews` | 작품 리뷰 목록    |
+| POST   | `/contents/{content_id}/reviews` | 리뷰 작성       |
+| PATCH  | `/reviews/{review_id}`           | 리뷰 수정       |
+| DELETE | `/reviews/{review_id}`           | 리뷰 삭제       |
 
 * **30% 이상 시청한 경우에만 작성 가능**
-* 프로필당 작품 1개 리뷰 제한
+* 프로필당 작품 1개 리뷰 제한(프로필+콘텐츠 UNIQUE)
 
 ---
 
 ## 8. 보안 / 디바이스 (향후)
 
-> v0 DB에는 디바이스 테이블이 없어 **설계만 정의**
+> v1에서는 디바이스 테이블이 없어 **설계만 정의**(향후 확장)
 
-| Method | Endpoint                               |
-| ------ | -------------------------------------- |
-| GET    | `/security/devices`                    |
-| POST   | `/security/devices/{device_id}/logout` |
-| POST   | `/security/devices/logout-all`         |
+| Method | Endpoint                               | Description  |
+| ------ | -------------------------------------- | ------------ |
+| GET    | `/security/devices`                    | 최근 접속 기기 목록  |
+| POST   | `/security/devices/{device_id}/logout` | 특정 디바이스 로그아웃 |
+| POST   | `/security/devices/logout-all`         | 전체 디바이스 로그아웃 |
 
 ---
 
