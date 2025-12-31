@@ -512,25 +512,186 @@ X-Profile-Id: 10
 
 ## 5. Wishlist (찜)
 
-(변경 없음 — 기존 문서 유지)
+### 5-1. 찜 목록 – `GET /api/v1/wishlist`
+
+#### Request
+
+```http
+GET /api/v1/wishlist
+Authorization: Bearer {access_token}
+X-Profile-Id: 10
+```
+
+#### Response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "content_id": 100,
+        "title_kr": "인터스텔라",
+        "type": "MOVIE",
+        "thumbnail_url": "https://example.com/interstellar.jpg",
+        "added_at": "2025-12-09T10:00:00.000Z"
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+* 중복 찜은 DB에서 UNIQUE로 방지 (`wishlists(profile_id, content_id)`)
+
+---
+
+### 5-2. 찜 추가 – `POST /api/v1/wishlist`
+
+#### Request Body
+
+```json
+{
+  "content_id": 100
+}
+```
+
+#### Response (204)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+---
+
+### 5-3. 찜 제거 – `DELETE /api/v1/wishlist/{content_id}`
+
+#### Response (204)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
 
 ---
 
 ## 6. Reviews (리뷰/별점)
 
-(변경 없음 — 기존 문서 유지)
+### 6-1. 작품 리뷰 목록 – `GET /api/v1/contents/{content_id}/reviews`
+
+#### Query Params
+
+* `sort`: `NEWEST`(기본), `HIGHEST_RATED`, `LOWEST_RATED`
+
+#### Response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "reviews": [
+      {
+        "review_id": 123,
+        "profile_name": "혜빈",
+        "rating": 4.5,
+        "title": "몰입감 최고",
+        "body": "중간중간 살짝 루즈하지만 전체적으로 재밌었어요.",
+        "contains_spoiler": false,
+        "created_at": "2025-12-10T10:00:00.000Z"
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+* DB `spoiler` → API `contains_spoiler`
+
+---
+
+### 6-2. 리뷰 작성 – `POST /api/v1/contents/{content_id}/reviews`
+
+* 조건: **해당 프로필이 해당 작품을 30% 이상 시청**해야 가능
+* v1에서 별점은 리뷰의 rating과 동일
+
+#### Request Body
+
+```json
+{
+  "rating": 4.5,
+  "title": "몰입감 최고",
+  "body": "중간중간 살짝 루즈하지만 전체적으로 재밌었어요.",
+  "contains_spoiler": false,
+  "is_private": false
+}
+```
+
+#### Response (201)
+
+```json
+{
+  "success": true,
+  "data": {
+    "review_id": 123
+  },
+  "error": null
+}
+```
+
+#### 에러
+
+* `WATCH_TIME_TOO_SHORT` (403)
+* `ALREADY_REVIEWED` (409)  (DB UNIQUE로도 방지)
+
+---
+
+### 6-3. 리뷰 수정 – `PATCH /api/v1/reviews/{review_id}`
+
+#### Response (204)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+---
+
+### 6-4. 리뷰 삭제 – `DELETE /api/v1/reviews/{review_id}`
+
+#### Response (204)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
 
 ---
 
 ## 7. Security (향후)
 
-* v1 문서에서는 “향후”로만 유지
+* v1 범위에서는 인증/인가 및 토큰 정책까지만 정의하며,
+  디바이스·세션 관리 등 고급 보안 기능은 v2에서 별도 설계한다.
 
 ---
 
 ## 8. 향후 확장 메모
 
-* 멤버십/결제 API(`/plans`, `/subscriptions`, `/payments`)는 v2 분리 설계 예정
+* 멤버십/결제 API(`/plans`, `/subscriptions`, `/payments`)는 v2에서 분리 설계 예정
 * 소셜 로그인 `/auth/{provider}` 확장 가능
-* 관리자 API `/admin/api/v1/...` 별도
-* Watch Party(Phase2) 문서 분리 가능
+* 관리자 API(`/admin/api/v1/...`)는 별도 문서로 관리
+* Watch Party(Phase2)는 전용 문서로 분리 가능
+
+
